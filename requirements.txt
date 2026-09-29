@@ -1,0 +1,30 @@
+# ===============================================================
+# Customer Segmentation API - pinned dependencies
+# Target: Python 3.11 (Windows dev, Linux in Docker/CI)
+# ===============================================================
+# These 8 pins are the ONLY versions that travel between your
+# laptop, GitHub Actions and the Docker image. They are pinned
+# exactly on purpose:
+#   - scikit-learn: the pickle records the version that wrote it.
+#     A mismatch can raise InconsistentVersionWarning or fail to
+#     unpickle. Never bump this without re-running train_model.py.
+#   - numpy: floor is 2.4.6 because numpy 2.5+ requires Python
+#     >= 3.12 and we target 3.11.
+# Transitive deps (scipy, starlette, pydantic-core, anyio, ...) are
+# resolved by pip. Only pin one of those if you hit a real conflict.
+# ===============================================================
+
+# --- runtime ---
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+scikit-learn==1.9.1
+numpy==2.4.6
+joblib==1.6.0
+
+# --- tests ---
+# Kept in the same file on purpose: CI and the Docker image then use
+# byte-identical environments. (httpx is required by FastAPI's
+# TestClient; it is NOT optional.)
+pytest==9.1.1
+httpx==0.28.1
