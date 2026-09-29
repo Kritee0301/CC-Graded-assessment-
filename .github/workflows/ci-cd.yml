@@ -1,8 +1,5 @@
 name: CI/CD
 
-# Runs on every push to main and every pull request. The workflow can also be
-# started by hand from the Actions tab (workflow_dispatch) - useful for
-# re-running a deployment without pushing an empty commit.
 on:
   push:
     branches: [main]
@@ -10,22 +7,18 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Least privilege by default; individual jobs widen this only if they must.
 permissions:
   contents: read
 
-# Cancel superseded runs on the same branch to save runner minutes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Job 1: prove the code and the committed model artifact are sound.
-  # ---------------------------------------------------------------------------
   test:
     name: Test (Python 3.11)
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -46,7 +39,7 @@ jobs:
           python -c "
           from app.model import SegmentationModel
           m = SegmentationModel.load()
-          assert m.feature_names == list(['age','annual_income_k','spending_score','purchase_frequency','avg_order_value']), m.feature_names
+          assert m.feature_names == ['age','annual_income_k','spending_score','purchase_frequency','avg_order_value'], m.feature_names
           assert m.n_clusters == 4, m.n_clusters
           metrics = m.metrics
           assert metrics['silhouette'] > 0.3, metrics
@@ -61,28 +54,24 @@ jobs:
       - name: Confirm the test count
         run: python -m pytest -q
 
-  # ---------------------------------------------------------------------------
-  # Job 2: build the image, prove the container actually serves traffic, then
-  # publish it to GHCR. Pushing only happens on main (never on a pull request).
-  # ---------------------------------------------------------------------------
   docker:
     name: Build, smoke-test and publish image
     runs-on: ubuntu-latest
     needs: test
+
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Compute lowercase image name
-        # ghcr.io only accepts lowercase paths, and the repository owner may
-        # have capitals (e.g. "Kritee/repo"). GitHub expressions have no
-        # lowercase() function, so do it with bash parameter expansion.
         run: |
-         IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
-         echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+          IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -119,6 +108,7 @@ jobs:
             fi
             sleep 2
           done
+
           echo "::error::container never became healthy"
           docker logs seg-api
           exit 1
@@ -127,6 +117,7 @@ jobs:
         run: |
           curl -fsS http://localhost:8000/health -o health.json
           cat health.json
+
           python -c "
           import json
           health = json.load(open('health.json'))
@@ -140,7 +131,9 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"age":40,"annual_income_k":61.0,"spending_score":51,"purchase_frequency":13,"avg_order_value":74.0}' \
             -o predict.json
+
           cat predict.json
+
           python -c "
           import json
           prediction = json.load(open('predict.json'))
@@ -176,33 +169,24 @@ jobs:
             echo "| --- | --- |"
             echo "| Build + model smoke test | pass |"
             echo "| Container healthy | pass |"
-            echo "| \`GET /health\` | pass |"
-            echo "| \`POST /predict\` | pass |"
+            echo "| GET /health | pass |"
+            echo "| POST /predict | pass |"
             echo "| Published to GHCR | ${{ github.event_name == 'push' && 'yes' || 'no (pull request)' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # ---------------------------------------------------------------------------
-  # Job 3: optional deployment to an EC2 instance.
-  # DISABLED BY DEFAULT - it only runs when the repository variable
-  # ENABLE_EC2_DEPLOY is set to "true" and the secrets EC2_HOST, EC2_USER and
-  # EC2_SSH_KEY exist. Until then this job is skipped, so the pipeline stays
-  # green and costs nothing.
-  #
-  # To enable: repo Settings -> Secrets and variables -> Actions ->
-  #   Variables: ENABLE_EC2_DEPLOY = true
-  #   Secrets:   EC2_HOST, EC2_USER, EC2_SSH_KEY
-  # ---------------------------------------------------------------------------
   deploy-ec2:
     name: Deploy to EC2 (opt-in)
     runs-on: ubuntu-latest
     needs: docker
+
     if: github.event_name == 'push' && vars.ENABLE_EC2_DEPLOY == 'true'
+
     steps:
       - name: Compute lowercase image name
-              - name: Compute lowercase image name
         run: |
           IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
           echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
@@ -215,19 +199,25 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
             "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" 'bash -s' <<'REMOTE'
           set -euo pipefail
+
           IMAGE="${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
           docker pull "$IMAGE"
           docker rm -f seg-api >/dev/null 2>&1 || true
           docker run -d --name seg-api --restart unless-stopped -p 8000:8000 "$IMAGE"
+
           for attempt in $(seq 1 30); do
             status=$(docker inspect --format '{{.State.Health.Status}}' seg-api 2>/dev/null || echo starting)
             echo "attempt ${attempt}: ${status}"
+
             if [ "$status" = "healthy" ]; then
               docker ps --filter name=seg-api
               exit 0
             fi
+
             sleep 2
           done
+
           echo "container never became healthy"
           docker logs seg-api
           exit 1
