@@ -27,4 +27,4 @@ joblib==1.6.0
 # byte-identical environments. (httpx is required by FastAPI's
 # TestClient; it is NOT optional.)
 pytest==9.1.1
-httpx==0.28.1
+httpx2==2.13.1
