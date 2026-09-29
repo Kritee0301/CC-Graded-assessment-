@@ -51,9 +51,6 @@ jobs:
       - name: Run test suite
         run: python -m pytest -v
 
-      - name: Confirm the test count
-        run: python -m pytest -q
-
   docker:
     name: Build, smoke-test and publish image
     runs-on: ubuntu-latest
@@ -68,7 +65,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set image name
-        run: echo "IMAGE_NAME=ghcr.io/kritee0301/cc-graded-assessment-" >> "$GITHUB_ENV"
+        run: echo "IMAGE_NAME=ghcr.io/kritee0301/customer-segmentation-api" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -142,7 +139,7 @@ jobs:
 
       - name: Container logs
         if: always()
-        run: docker logs seg-api
+        run: docker logs seg-api || true
 
       - name: Stop the container
         if: always()
@@ -181,7 +178,7 @@ jobs:
 
     steps:
       - name: Set image name
-        run: echo "IMAGE_NAME=ghcr.io/kritee0301/cc-graded-assessment-" >> "$GITHUB_ENV"
+        run: echo "IMAGE_NAME=ghcr.io/kritee0301/customer-segmentation-api" >> "$GITHUB_ENV"
 
       - name: Prepare SSH key
         run: |
