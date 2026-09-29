@@ -199,10 +199,10 @@ jobs:
     if: github.event_name == 'push' && vars.ENABLE_EC2_DEPLOY == 'true'
     steps:
       - name: Compute lowercase image name
+              - name: Compute lowercase image name
         run: |
-  IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
-  echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
-
+          IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
