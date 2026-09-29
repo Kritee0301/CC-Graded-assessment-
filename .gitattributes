@@ -1,0 +1,6 @@
+# Normalise line endings so Docker builds and CI behave identically on
+# Windows, Linux and macOS.
+* text=auto eol=lf
+
+# Never rewrite binary artifacts.
+*.pkl binary

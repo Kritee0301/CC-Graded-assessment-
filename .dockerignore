@@ -1,0 +1,58 @@
+# ===========================================================================
+# Docker build context exclusions.
+#
+# NOTE: model/customer_model.pkl is deliberately NOT excluded anywhere in this
+# file. It is the trained artifact that the image serves; excluding it would
+# make the build fail at the smoke-test step (by design). Do not add "*.pkl",
+# "model/" or "model" to this file.
+# ===========================================================================
+
+# --- version control and CI config ---
+.git/
+.gitignore
+.github/
+
+# --- local virtualenv: hundreds of MB and thousands of files. On Windows this
+# --- also contains Scripts/*.exe, which slows context transfer badly. ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Python caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- test and tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+*.egg-info/
+build/
+dist/
+
+# --- secrets: must never be baked into a layer ---
+.env
+.env.*
+*.pem
+*.key
+*.ppk
+credentials.json
+secrets.json
+
+# --- editor and OS noise ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+*~
+
+# --- docs ---
+README.md
+*.md
