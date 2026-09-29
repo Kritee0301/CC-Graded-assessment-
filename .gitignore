@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---------------------------------------------------------------
+# Virtual environments
+# ---------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------------------------------------------------------------
+# Test / type / lint caches
+# ---------------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.mypy_cache/
+
+# ---------------------------------------------------------------
+# Jupyter (in case you experiment with notebooks)
+# ---------------------------------------------------------------
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------
+# Secrets and credentials -- NEVER commit these
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.ppk
+credentials.json
+secrets.json
+.netrc
+.git-credentials
+
+# ---------------------------------------------------------------
+# OS / editor noise
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+*.log
+
+# ---------------------------------------------------------------
+# ML artifacts
+# ---------------------------------------------------------------
+# IMPORTANT: model/customer_model.pkl is intentionally NOT ignored.
+# It is a required build artifact: it is baked into the Docker image
+# (COPY model/ ...) and consumed by CI, so it MUST be committed to git.
+# Do not add "*.pkl" or "model/" to this file.
