@@ -2,7 +2,7 @@
 
 A small ML API that sorts a customer into one of four segments from five numbers: age, annual income, spending score, purchase frequency and average order value.
 
-**Live:** https://cc-graded-assessment.onrender.com ([docs](https://cc-graded-assessment.onrender.com/docs))
+**Live:** https://cc-graded-assessment.onrender.com — the page at `/` calls the API directly. [API docs](https://cc-graded-assessment.onrender.com/docs)
 
 ## Overview
 
@@ -21,8 +21,8 @@ The trained model is one committed file (`model/customer_model.pkl`, 2,349 bytes
 ```
 app/
   main.py          # routes and startup
-  ststic/
-    index.html       # project page shown at /
+  static/
+    index.html     # interactive page shown at / and /ui
   model.py         # loads the model and predicts
   schemas.py       # request/response validation
 model/
@@ -67,7 +67,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open http://localhost:8000/docs.
+Open http://localhost:8000/ for the interactive page, or http://localhost:8000/docs for the API docs.
 
 ## Docker
 
@@ -82,6 +82,7 @@ curl http://localhost:8000/health
 | Method | Path | What it does |
 | --- | --- | --- |
 | GET | `/` | Project page in a browser, JSON index for API clients |
+| GET | `/ui` | The same page, always HTML |
 | GET | `/health` | Health check |
 | POST | `/predict` | Segment one customer |
 | POST | `/predict/batch` | Segment 1–100 customers |

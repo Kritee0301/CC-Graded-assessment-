@@ -308,18 +308,34 @@
   function note(text) { $("apinote").innerHTML = text; }
 
   // ---- health -------------------------------------------------------------
-  function loadHealth() {
+  // A free-tier service sleeps when idle and needs 30-60s to wake, so one
+  // failed check proves nothing. Retry with backoff before giving up.
+  var HEALTH_ATTEMPTS = 6;
+
+  function loadHealth(attempt) {
+    attempt = attempt || 1;
     $("status").className = "pill warn";
-    $("status").innerHTML = '<span class="dot"></span>checking…';
+    $("status").innerHTML = '<span class="dot"></span>' +
+      (attempt === 1 ? "checking…" : "waking up… (attempt " + attempt + " of " + HEALTH_ATTEMPTS + ")");
+
     return request("/health")
       .then(function (h) {
         $("status").className = "pill ok";
         $("status").innerHTML = '<span class="dot"></span>ready · ' + h.n_clusters +
           " segments · scikit-learn " + h.sklearn_version;
+        $("output").innerHTML = '<p class="result-empty">Submit the form to see the assigned segment.</p>';
         loadSegments();
         return true;
       })
       .catch(function (err) {
+        if (attempt < HEALTH_ATTEMPTS) {
+          var delay = Math.min(2000 * attempt, 8000);
+          $("status").className = "pill warn";
+          $("status").innerHTML = '<span class="dot"></span>waking up… retrying in ' +
+            Math.round(delay / 1000) + "s";
+          setTimeout(function () { loadHealth(attempt + 1); }, delay);
+          return false;
+        }
         $("status").className = "pill bad";
         $("status").innerHTML = '<span class="dot"></span>unreachable';
         $("output").innerHTML = connectionHelp(err.message);
@@ -328,12 +344,14 @@
   }
 
   function connectionHelp(detail) {
-    var html = '<div class="error"><strong>Could not reach the API.</strong><br>' +
+    var html = '<div class="error"><strong>Could not reach the API after ' +
+      HEALTH_ATTEMPTS + ' tries.</strong><br>' +
       esc(detail) + "<ul>" +
       "<li>Start the server: <code>uvicorn app.main:app</code> in your project folder, then open <code>http://localhost:8000/ui</code>.</li>" +
       "<li>Opening this file by double-clicking never works on its own — type the API address in the box at the top (for example <code>" + RENDER_URL + "</code>) and press <strong>Connect</strong>.</li>" +
       "<li>A free Render instance sleeps after 15 minutes idle; the first request can take 30–60 seconds.</li>" +
-      "</ul></div>";
+      "</ul>" +
+      '<button type="button" id="retry" style="margin-top:4px">Try again</button></div>';
     return html;
   }
 
@@ -430,6 +448,9 @@
   }
 
   // ---- address bar --------------------------------------------------------
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "retry") { loadHealth(); }
+  });
   $("connect").addEventListener("click", function () { applyBase($("apiBase").value); loadHealth(); });
   $("apiBase").addEventListener("keydown", function (e) { if (e.key === "Enter") { $("connect").click(); } });
   $("useLocal").addEventListener("click", function () { applyBase(LOCAL_URL); loadHealth(); });
