@@ -21,7 +21,8 @@ The trained model is one committed file (`model/customer_model.pkl`, 2,349 bytes
 ```
 app/
   main.py          # routes and startup
-  index.html       # project page shown at /
+  ststic/
+    index.html       # project page shown at /
   model.py         # loads the model and predicts
   schemas.py       # request/response validation
 model/
