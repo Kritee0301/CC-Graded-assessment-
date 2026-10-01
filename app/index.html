@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Segmentation API</title>
+<meta name="description" content="A small ML API that sorts a customer into one of four segments.">
+<style>
+:root{
+  --paper:#eef2f1; --card:#ffffff; --ink:#1b2430; --muted:#5a6672; --line:#d3dbd9;
+  --accent:#1f6f5c; --code-bg:#17212b; --code-ink:#dfe8ee;
+  --s0:#3b5b92; --s1:#7a3e8e; --s2:#1f8a70; --s3:#c98a00;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#11181d; --card:#18222a; --ink:#e6edf0; --muted:#97a4ad; --line:#2a3741;
+        --accent:#4fc3a1; --code-bg:#0c1318; --code-ink:#dfe8ee;
+        --s0:#7ea2e0; --s1:#c58ad8; --s2:#4fc3a1; --s3:#e8b73a;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wrap{max-width:960px;margin:0 auto;padding:48px 20px 64px}
+h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.1;margin:0 0 14px;letter-spacing:-.02em}
+h2{font-size:1.25rem;margin:56px 0 16px;letter-spacing:-.01em}
+p{margin:0 0 14px;max-width:62ch}
+.lede{font-size:1.15rem;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0}
+.btn{display:inline-block;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;
+  border:2px solid var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--paper)}
+.btn:hover{filter:brightness(1.1)}
+
+/* hero demo */
+.demo{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:40px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line);background:var(--card)}
+.demo>div{padding:20px}
+.demo .req{background:var(--code-bg);color:var(--code-ink)}
+.label{font-size:.85rem;color:var(--muted);margin:0 0 10px}
+.req .label{color:#8fa1ad}
+pre,code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:0;font-size:.85rem;line-height:1.55;overflow-x:auto;white-space:pre}
+.bars{list-style:none;margin:0;padding:0}
+.bars li{margin:0 0 14px}
+.bars .row{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;margin-bottom:4px}
+.bars .name{font-weight:600}
+.bars .val{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted)}
+.track{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.fill{height:100%;min-width:4px;border-radius:5px}
+.win .name::after{content:" (closest)";font-weight:500;color:var(--s2)}
+.result{margin:0 0 16px;font-size:1.05rem}
+.result strong{font-size:1.35rem}
+
+/* segments */
+.segs{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.seg{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:8px;padding:14px 16px}
+.seg h3{margin:0 0 4px;font-size:1rem}
+.seg p{margin:0;color:var(--muted);font-size:.95rem}
+
+/* tables */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:.95rem;vertical-align:top}
+th{background:color-mix(in srgb,var(--line) 45%,var(--card))}
+tr:last-child td{border-bottom:0}
+td code,li code{background:color-mix(in srgb,var(--line) 55%,transparent);padding:1px 6px;border-radius:4px;font-size:.88rem}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.two ul{margin:0;padding-left:20px}
+.two li{margin-bottom:6px}
+footer{margin-top:64px;color:var(--muted);font-size:.9rem}
+
+@media (max-width:720px){
+  .demo{grid-template-columns:1fr}
+  .segs,.two{grid-template-columns:1fr}
+  .wrap{padding-top:32px}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<h1>Customer Segmentation API</h1>
+<p class="lede">Send five numbers about a customer. Get back which of four segments they belong to.</p>
+<div class="links">
+  <a class="btn primary" href="/docs">Open API docs</a>
+  <a class="btn" href="/health">Check health</a>
+</div>
+
+<section class="demo" aria-label="Example prediction">
+  <div class="req">
+    <p class="label">Request: POST /predict</p>
+<pre>{
+  "age": 40,
+  "annual_income_k": 61.0,
+  "spending_score": 51,
+  "purchase_frequency": 13,
+  "avg_order_value": 74.0
+}</pre>
+  </div>
+  <div>
+    <p class="label">Response</p>
+    <p class="result">Segment 2: <strong>Mainstream Families</strong></p>
+    <p class="label">Distance to each segment's centre (shorter is closer)</p>
+    <ul class="bars">
+      <li><div class="row"><span class="name">Affluent Conservatives</span><span class="val">2.947</span></div>
+          <div class="track"><div class="fill" style="width:98%;background:var(--s0)"></div></div></li>
+      <li><div class="row"><span class="name">Premium Loyalists</span><span class="val">2.397</span></div>
+          <div class="track"><div class="fill" style="width:80%;background:var(--s1)"></div></div></li>
+      <li class="win"><div class="row"><span class="name">Mainstream Families</span><span class="val">0.062</span></div>
+          <div class="track"><div class="fill" style="width:2%;background:var(--s2)"></div></div></li>
+      <li><div class="row"><span class="name">Young Digital Spenders</span><span class="val">2.314</span></div>
+          <div class="track"><div class="fill" style="width:77%;background:var(--s3)"></div></div></li>
+    </ul>
+  </div>
+</section>
+
+<h2>The four segments</h2>
+<div class="segs">
+  <div class="seg" style="--c:var(--s0)"><h3>0 · Affluent Conservatives</h3><p>High income, low engagement. Older, high basket value but rarely shop.</p></div>
+  <div class="seg" style="--c:var(--s1)"><h3>1 · Premium Loyalists</h3><p>High income, high engagement, frequent buyers with premium baskets.</p></div>
+  <div class="seg" style="--c:var(--s2)"><h3>2 · Mainstream Families</h3><p>Middle income, moderate engagement. The core mass-market cohort.</p></div>
+  <div class="seg" style="--c:var(--s3)"><h3>3 · Young Digital Spenders</h3><p>Young, lower income, high engagement. Frequent small-basket buyers.</p></div>
+</div>
+
+<h2>Endpoints</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/health</code></td><td>Health check</td></tr>
+    <tr><td>POST</td><td><code>/predict</code></td><td>Segment one customer</td></tr>
+    <tr><td>POST</td><td><code>/predict/batch</code></td><td>Segment 1–100 customers</td></tr>
+    <tr><td>GET</td><td><code>/segments</code></td><td>List the four segments</td></tr>
+    <tr><td>GET</td><td><code>/model/info</code></td><td>Model details and training metrics</td></tr>
+    <tr><td>GET</td><td><code>/docs</code></td><td>Interactive Swagger UI</td></tr>
+  </tbody>
+</table>
+</div>
+<p style="margin-top:14px;color:var(--muted)">Invalid input (out-of-range values, missing or unknown fields) returns <code>422</code>.</p>
+
+<h2>How it's built</h2>
+<div class="two">
+  <div>
+    <p class="label">Stack</p>
+    <ul>
+      <li>Python 3.11, scikit-learn (StandardScaler + KMeans, k = 4)</li>
+      <li>FastAPI, Pydantic, uvicorn</li>
+      <li>Docker, Pytest (52 tests)</li>
+      <li>GitHub Actions, GHCR, Render</li>
+    </ul>
+  </div>
+  <div>
+    <p class="label">On every push to main</p>
+    <ul>
+      <li>Install dependencies and run Pytest</li>
+      <li>Build the Docker image and smoke-test <code>/health</code> and <code>/predict</code></li>
+      <li>Publish <code>ghcr.io/kritee0301/customer-segmentation-api</code></li>
+    </ul>
+  </div>
+</div>
+
+<h2>Run it yourself</h2>
+<div class="demo" style="grid-template-columns:1fr">
+  <div class="req"><pre>docker build -t customer-segmentation-api .
+docker run -d --name seg-api -p 8000:8000 customer-segmentation-api
+curl http://localhost:8000/health</pre></div>
+</div>
+
+<footer>Live at <a href="https://cc-graded-assessment.onrender.com">cc-graded-assessment.onrender.com</a>. The free Render tier may take a moment to wake up.</footer>
+
+</main>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Segmentation API</title>
+<meta name="description" content="A small ML API that sorts a customer into one of four segments.">
+<style>
+:root{
+  --paper:#eef2f1; --card:#ffffff; --ink:#1b2430; --muted:#5a6672; --line:#d3dbd9;
+  --accent:#1f6f5c; --code-bg:#17212b; --code-ink:#dfe8ee;
+  --s0:#3b5b92; --s1:#7a3e8e; --s2:#1f8a70; --s3:#c98a00;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#11181d; --card:#18222a; --ink:#e6edf0; --muted:#97a4ad; --line:#2a3741;
+        --accent:#4fc3a1; --code-bg:#0c1318; --code-ink:#dfe8ee;
+        --s0:#7ea2e0; --s1:#c58ad8; --s2:#4fc3a1; --s3:#e8b73a;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wrap{max-width:960px;margin:0 auto;padding:48px 20px 64px}
+h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.1;margin:0 0 14px;letter-spacing:-.02em}
+h2{font-size:1.25rem;margin:56px 0 16px;letter-spacing:-.01em}
+p{margin:0 0 14px;max-width:62ch}
+.lede{font-size:1.15rem;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0}
+.btn{display:inline-block;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;
+  border:2px solid var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--paper)}
+.btn:hover{filter:brightness(1.1)}
+
+/* hero demo */
+.demo{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:40px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line);background:var(--card)}
+.demo>div{padding:20px}
+.demo .req{background:var(--code-bg);color:var(--code-ink)}
+.label{font-size:.85rem;color:var(--muted);margin:0 0 10px}
+.req .label{color:#8fa1ad}
+pre,code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:0;font-size:.85rem;line-height:1.55;overflow-x:auto;white-space:pre}
+.bars{list-style:none;margin:0;padding:0}
+.bars li{margin:0 0 14px}
+.bars .row{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;margin-bottom:4px}
+.bars .name{font-weight:600}
+.bars .val{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted)}
+.track{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.fill{height:100%;min-width:4px;border-radius:5px}
+.win .name::after{content:" (closest)";font-weight:500;color:var(--s2)}
+.result{margin:0 0 16px;font-size:1.05rem}
+.result strong{font-size:1.35rem}
+
+/* segments */
+.segs{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.seg{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:8px;padding:14px 16px}
+.seg h3{margin:0 0 4px;font-size:1rem}
+.seg p{margin:0;color:var(--muted);font-size:.95rem}
+
+/* tables */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:.95rem;vertical-align:top}
+th{background:color-mix(in srgb,var(--line) 45%,var(--card))}
+tr:last-child td{border-bottom:0}
+td code,li code{background:color-mix(in srgb,var(--line) 55%,transparent);padding:1px 6px;border-radius:4px;font-size:.88rem}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.two ul{margin:0;padding-left:20px}
+.two li{margin-bottom:6px}
+footer{margin-top:64px;color:var(--muted);font-size:.9rem}
+
+@media (max-width:720px){
+  .demo{grid-template-columns:1fr}
+  .segs,.two{grid-template-columns:1fr}
+  .wrap{padding-top:32px}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<h1>Customer Segmentation API</h1>
+<p class="lede">Send five numbers about a customer. Get back which of four segments they belong to.</p>
+<div class="links">
+  <a class="btn primary" href="/docs">Open API docs</a>
+  <a class="btn" href="/health">Check health</a>
+</div>
+
+<section class="demo" aria-label="Example prediction">
+  <div class="req">
+    <p class="label">Request: POST /predict</p>
+<pre>{
+  "age": 40,
+  "annual_income_k": 61.0,
+  "spending_score": 51,
+  "purchase_frequency": 13,
+  "avg_order_value": 74.0
+}</pre>
+  </div>
+  <div>
+    <p class="label">Response</p>
+    <p class="result">Segment 2: <strong>Mainstream Families</strong></p>
+    <p class="label">Distance to each segment's centre (shorter is closer)</p>
+    <ul class="bars">
+      <li><div class="row"><span class="name">Affluent Conservatives</span><span class="val">2.947</span></div>
+          <div class="track"><div class="fill" style="width:98%;background:var(--s0)"></div></div></li>
+      <li><div class="row"><span class="name">Premium Loyalists</span><span class="val">2.397</span></div>
+          <div class="track"><div class="fill" style="width:80%;background:var(--s1)"></div></div></li>
+      <li class="win"><div class="row"><span class="name">Mainstream Families</span><span class="val">0.062</span></div>
+          <div class="track"><div class="fill" style="width:2%;background:var(--s2)"></div></div></li>
+      <li><div class="row"><span class="name">Young Digital Spenders</span><span class="val">2.314</span></div>
+          <div class="track"><div class="fill" style="width:77%;background:var(--s3)"></div></div></li>
+    </ul>
+  </div>
+</section>
+
+<h2>The four segments</h2>
+<div class="segs">
+  <div class="seg" style="--c:var(--s0)"><h3>0 · Affluent Conservatives</h3><p>High income, low engagement. Older, high basket value but rarely shop.</p></div>
+  <div class="seg" style="--c:var(--s1)"><h3>1 · Premium Loyalists</h3><p>High income, high engagement, frequent buyers with premium baskets.</p></div>
+  <div class="seg" style="--c:var(--s2)"><h3>2 · Mainstream Families</h3><p>Middle income, moderate engagement. The core mass-market cohort.</p></div>
+  <div class="seg" style="--c:var(--s3)"><h3>3 · Young Digital Spenders</h3><p>Young, lower income, high engagement. Frequent small-basket buyers.</p></div>
+</div>
+
+<h2>Endpoints</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/health</code></td><td>Health check</td></tr>
+    <tr><td>POST</td><td><code>/predict</code></td><td>Segment one customer</td></tr>
+    <tr><td>POST</td><td><code>/predict/batch</code></td><td>Segment 1–100 customers</td></tr>
+    <tr><td>GET</td><td><code>/segments</code></td><td>List the four segments</td></tr>
+    <tr><td>GET</td><td><code>/model/info</code></td><td>Model details and training metrics</td></tr>
+    <tr><td>GET</td><td><code>/docs</code></td><td>Interactive Swagger UI</td></tr>
+  </tbody>
+</table>
+</div>
+<p style="margin-top:14px;color:var(--muted)">Invalid input (out-of-range values, missing or unknown fields) returns <code>422</code>.</p>
+
+<h2>How it's built</h2>
+<div class="two">
+  <div>
+    <p class="label">Stack</p>
+    <ul>
+      <li>Python 3.11, scikit-learn (StandardScaler + KMeans, k = 4)</li>
+      <li>FastAPI, Pydantic, uvicorn</li>
+      <li>Docker, Pytest (52 tests)</li>
+      <li>GitHub Actions, GHCR, Render</li>
+    </ul>
+  </div>
+  <div>
+    <p class="label">On every push to main</p>
+    <ul>
+      <li>Install dependencies and run Pytest</li>
+      <li>Build the Docker image and smoke-test <code>/health</code> and <code>/predict</code></li>
+      <li>Publish <code>ghcr.io/kritee0301/customer-segmentation-api</code></li>
+    </ul>
+  </div>
+</div>
+
+<h2>Run it yourself</h2>
+<div class="demo" style="grid-template-columns:1fr">
+  <div class="req"><pre>docker build -t customer-segmentation-api .
+docker run -d --name seg-api -p 8000:8000 customer-segmentation-api
+curl http://localhost:8000/health</pre></div>
+</div>
+
+<footer>Live at <a href="https://cc-graded-assessment.onrender.com">cc-graded-assessment.onrender.com</a>. The free Render tier may take a moment to wake up.</footer>
+
+</main>
+</body>
+</html>
